@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ApiError, uploadCsv } from '../services/api';
 import type { ImportSummary } from '../types';
+import { Spinner } from './Spinner';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -14,9 +15,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+type Status = 'idle' | 'uploading' | 'success' | 'error';
+
 export function UploadPanel({ onUploadSuccess }: UploadPanelProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
+  const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<ImportSummary | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +58,7 @@ export function UploadPanel({ onUploadSuccess }: UploadPanelProps) {
     try {
       const summary = await uploadCsv(file);
       setLastSummary(summary);
-      setStatus('idle');
+      setStatus('success');
       setFile(null);
       if (inputRef.current) inputRef.current.value = '';
       onUploadSuccess(summary);
@@ -92,17 +95,28 @@ export function UploadPanel({ onUploadSuccess }: UploadPanelProps) {
           type="button"
           onClick={handleUpload}
           disabled={!file || status === 'uploading'}
-          className="ml-auto cursor-pointer rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
+          {status === 'uploading' && <Spinner size="sm" />}
           {status === 'uploading' ? 'Uploading…' : 'Upload'}
         </button>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      {lastSummary && status !== 'uploading' && (
-        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
-          <p className="font-medium text-slate-800">
+      {status === 'uploading' && (
+        <div className="mt-4 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+          <Spinner size="sm" />
+          Processing your file — parsing, validating, and saving to the database…
+        </div>
+      )}
+
+      {status === 'success' && lastSummary && (
+        <div className="mt-4 rounded-md border border-[#0ca30c]/30 bg-[#0ca30c]/5 p-4 text-sm">
+          <p className="flex items-center gap-1.5 font-medium text-[#0ca30c]">
+            <span aria-hidden="true">✓</span> Upload complete — data is saved and the dashboard has been refreshed.
+          </p>
+          <p className="mt-2 font-medium text-slate-800">
             Processed {lastSummary.totalRows.toLocaleString()} rows from {lastSummary.filename}
           </p>
           <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-slate-600 sm:grid-cols-3">
