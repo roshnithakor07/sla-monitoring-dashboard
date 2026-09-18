@@ -184,7 +184,10 @@ Documented here because the spec explicitly said not to make silent choices.
 - **Duplicate handling:** exact duplicates (same service+timestamp+agent+payload) are deduped to
   one row; conflicting duplicates prefer the row with a non-null latency; multi-agent observations
   (same service+timestamp, different agent) are never deduped against each other. See §4 items 5-8
-  for the evidence behind each of these.
+  for the evidence behind each of these. **This dedup is scoped to a single upload only.**
+  Uploading the same CSV a second time creates a second `DatasetImport` and a second full copy of
+  its rows — stats and logs will reflect both. Cross-upload idempotency was deliberately left out
+  of scope (see §10); if you're re-testing with the same file, expect totals to move each time.
 - **Multi-agent observations' effect on availability:** counted as independent checks, not
   collapsed to one "consensus" result per timestamp — an alternative design (e.g. treating a
   service+timestamp as failed if *any* agent saw a failure) would materially change the
