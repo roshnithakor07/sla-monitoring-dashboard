@@ -58,4 +58,7 @@ export interface ImportSummary {
     latencyMissing: number;
     latencyInvalid: number;
   };
+  /** Set when this exact file (by content, not filename) was already
+   *  imported previously; no new rows were persisted this time. */
+  duplicateOfImport?: { filename: string; uploadedAt: string };
 }

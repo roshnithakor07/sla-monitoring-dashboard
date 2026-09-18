@@ -27,6 +27,12 @@ model DatasetImport {
   rejectedRows  Int
   duplicateRows Int
   status        ImportStatus @default(COMPLETED)
+  /// SHA-256 of the raw uploaded CSV content. Detects re-upload of the
+  /// EXACT same file (by content, not filename) so it isn't silently
+  /// re-persisted and double-counted. Deliberately whole-file, not
+  /// per-row: see MonitoringCheck's comment for why row-level cross-upload
+  /// dedup is unsafe for this dataset.
+  contentHash String @unique
 
   checks MonitoringCheck[]
 
@@ -69,6 +75,15 @@ model MonitoringCheck {
 
   createdAt DateTime @default(now())
 
+  /// NOT globally unique on (serviceId, timestamp, agent): the 5 supplied
+  /// sample files have overlapping date ranges and were independently
+  /// seeded, so the same key legitimately appears with DIFFERENT payloads
+  /// across files (verified directly: 8,743 colliding keys with differing
+  /// status/latency, vs. only 15 that were true full-row duplicates, and
+  /// even full-row content matching found 120 coincidental cross-file
+  /// collisions that are not the same observation). A content-based row
+  /// key would silently discard real data. Re-upload protection is instead
+  /// done at the whole-file level -- see DatasetImport.contentHash.
   @@index([timestamp])
   @@index([serviceId])
   @@index([statusCode])

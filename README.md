@@ -164,6 +164,15 @@ noise.
 12. **`latency_unit` is only ever `ms` or `s`**, no unrecognized units found; `s`-unit values, once
     converted, land in the same broad magnitude range as `ms`-unit values (hundreds of ms),
     confirming they're a legitimate alternate unit rather than misplaced/garbage data.
+13. **The 5 sample files have overlapping date ranges and are independently seeded** — the 12-day
+    (starts 2025-04-10), 21-day (starts 2025-04-03), and 30-day (starts 2025-04-06) files all cover
+    mid-to-late April simultaneously. Loading all 5 into one database (done for this demo, to have
+    a realistic data volume) means the same `service_id + timestamp + agent` key legitimately
+    appears more than once with *different* latency/status values across files — verified directly
+    by querying the live database: of 8,758 colliding keys, 8,743 had genuinely different payloads.
+    This was discovered while investigating whether re-uploads should be deduplicated at the row
+    level (§5) — a key-based or even full-row-content constraint would have silently discarded real
+    data from a later file just because it collided with an earlier one.
 
 ## 5. Assumptions
 
@@ -181,13 +190,26 @@ Documented here because the spec explicitly said not to make silent choices.
 - **Missing/negative latency's effect on availability:** none — a check's status code is
   independent of whether its latency was recorded correctly, so these rows still count toward
   availability. They're excluded only from `avgLatencyMs`/`p95LatencyMs`.
-- **Duplicate handling:** exact duplicates (same service+timestamp+agent+payload) are deduped to
-  one row; conflicting duplicates prefer the row with a non-null latency; multi-agent observations
-  (same service+timestamp, different agent) are never deduped against each other. See §4 items 5-8
-  for the evidence behind each of these. **This dedup is scoped to a single upload only.**
-  Uploading the same CSV a second time creates a second `DatasetImport` and a second full copy of
-  its rows — stats and logs will reflect both. Cross-upload idempotency was deliberately left out
-  of scope (see §10); if you're re-testing with the same file, expect totals to move each time.
+- **Duplicate handling within a file:** exact duplicates (same service+timestamp+agent+payload) are
+  deduped to one row; conflicting duplicates prefer the row with a non-null latency; multi-agent
+  observations (same service+timestamp, different agent) are never deduped against each other. See
+  §4 items 5-8 for the evidence behind each of these.
+- **Re-uploading the same file:** detected and rejected at the whole-file level — the raw CSV's
+  SHA-256 is stored on `DatasetImport.contentHash` (unique), and re-submitting a file whose content
+  already matches a previous import returns `acceptedRows: 0` / `duplicateRows: totalRows` /
+  `duplicateOfImport: {filename, uploadedAt}` without persisting anything a second time.
+- **Cross-upload row-level dedup was tried and deliberately reverted.** An earlier version of this
+  pipeline enforced a database-level unique constraint on (serviceId, timestamp, agent) across
+  *all* uploads, on the theory that a re-submitted check shouldn't be counted twice. Verifying that
+  against the actual data before shipping it found the constraint was wrong for this dataset: the 5
+  supplied sample files have **overlapping date ranges** (e.g. the 12-day, 21-day, and 30-day files
+  all cover mid-April) and were **independently seeded**, so the same (serviceId, timestamp, agent)
+  key legitimately carries *different* latency/status values across files — confirmed directly: of
+  8,758 colliding keys, only 15 were true full-row duplicates; 8,743 had genuinely different
+  payloads from different files. A key-only constraint would have silently discarded real data;
+  even a full-row-content constraint still found 120 coincidental cross-file matches that were
+  provably two different observations. Row-level identity isn't a safe way to detect "already
+  uploaded" for this dataset — whole-file content hashing is.
 - **Multi-agent observations' effect on availability:** counted as independent checks, not
   collapsed to one "consensus" result per timestamp — an alternative design (e.g. treating a
   service+timestamp as failed if *any* agent saw a failure) would materially change the

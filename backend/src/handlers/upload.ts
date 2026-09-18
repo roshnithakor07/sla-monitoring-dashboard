@@ -1,8 +1,9 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { CsvStructureError } from '../processors/csvParser';
 import { runPipeline } from '../processors/pipeline';
-import { persistImport } from '../repositories/importRepository';
+import { findImportByContentHash, persistImport } from '../repositories/importRepository';
 import { errorResponse, jsonResponse } from '../utils/response';
+import { contentHash } from '../utils/hash';
 
 const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024);
 
@@ -39,11 +40,26 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     }
 
     const filename = event.headers?.['x-filename'] ?? event.headers?.['X-Filename'] ?? 'upload.csv';
+    const hash = contentHash(content);
+
+    // Whole-file re-upload check, BEFORE running the pipeline: re-submitting
+    // the exact same file should never persist a second copy of its rows.
+    // See importRepository.ts for why this is file-level, not row-level.
+    const existing = await findImportByContentHash(hash);
+    if (existing) {
+      const { summary } = runPipeline(filename, content);
+      return jsonResponse(200, {
+        ...summary,
+        acceptedRows: 0,
+        duplicateRows: summary.totalRows,
+        duplicateOfImport: { filename: existing.filename, uploadedAt: existing.uploadedAt.toISOString() },
+      });
+    }
 
     const { summary, rows } = runPipeline(filename, content);
-    await persistImport(summary, rows);
+    const finalSummary = await persistImport(summary, rows, hash);
 
-    return jsonResponse(200, summary);
+    return jsonResponse(200, finalSummary);
   } catch (err) {
     if (err instanceof CsvStructureError) {
       return errorResponse(400, err.message);
