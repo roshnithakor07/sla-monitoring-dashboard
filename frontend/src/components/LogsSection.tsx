@@ -113,8 +113,11 @@ export function LogsSection({ refreshKey }: LogsSectionProps) {
 
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs font-medium text-slate-500">Date from</label>
+          <label htmlFor="logs-date-from" className="block text-xs font-medium text-slate-500">
+            Date from
+          </label>
           <input
+            id="logs-date-from"
             type="date"
             value={draftFilters.startDate}
             onChange={(e) => setDraftFilters((f) => ({ ...f, startDate: e.target.value }))}
@@ -122,8 +125,11 @@ export function LogsSection({ refreshKey }: LogsSectionProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">Date to</label>
+          <label htmlFor="logs-date-to" className="block text-xs font-medium text-slate-500">
+            Date to
+          </label>
           <input
+            id="logs-date-to"
             type="date"
             value={draftFilters.endDate}
             onChange={(e) => setDraftFilters((f) => ({ ...f, endDate: e.target.value }))}
@@ -131,8 +137,11 @@ export function LogsSection({ refreshKey }: LogsSectionProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">Service</label>
+          <label htmlFor="logs-service" className="block text-xs font-medium text-slate-500">
+            Service
+          </label>
           <select
+            id="logs-service"
             value={draftFilters.serviceId}
             onChange={(e) => setDraftFilters((f) => ({ ...f, serviceId: e.target.value }))}
             className="mt-1 cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-sm"
@@ -146,8 +155,11 @@ export function LogsSection({ refreshKey }: LogsSectionProps) {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">Status</label>
+          <label htmlFor="logs-status" className="block text-xs font-medium text-slate-500">
+            Status
+          </label>
           <select
+            id="logs-status"
             value={draftFilters.status}
             onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
             className="mt-1 cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-sm"

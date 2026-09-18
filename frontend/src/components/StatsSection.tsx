@@ -39,6 +39,8 @@ export function StatsSection({ refreshKey }: StatsSectionProps) {
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        aria-controls="stats-panel"
         className="flex w-full cursor-pointer items-center justify-between text-left"
       >
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Statistics</h2>
@@ -46,7 +48,7 @@ export function StatsSection({ refreshKey }: StatsSectionProps) {
       </button>
 
       {expanded && (
-        <div className="mt-4">
+        <div id="stats-panel" className="mt-4">
           {loading && <p className="text-sm text-slate-500">Loading statistics…</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
 
