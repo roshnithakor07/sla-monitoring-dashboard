@@ -5,6 +5,7 @@
   "description": "Serverless upload/stats/logs API for the SLA monitoring dashboard",
   "type": "commonjs",
   "scripts": {
+    "dev": "ts-node --transpile-only src/local/server.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
