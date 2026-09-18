@@ -9,6 +9,7 @@ provider:
   architecture: x86_64
   httpApi:
     cors: true
+  logRetentionInDays: 14
   environment:
     DATABASE_URL: ${env:DATABASE_URL}
     DIRECT_URL: ${env:DIRECT_URL}
