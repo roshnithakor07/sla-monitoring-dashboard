@@ -7,34 +7,41 @@ import { prisma } from './prismaClient';
  * inserted batch can never be visible to dashboard queries.
  */
 export async function persistImport(summary: ImportSummary, rows: NormalizedCheckRow[]) {
-  return prisma.$transaction(async (tx) => {
-    const datasetImport = await tx.datasetImport.create({
-      data: {
-        filename: summary.filename,
-        totalRows: summary.totalRows,
-        acceptedRows: summary.acceptedRows,
-        rejectedRows: summary.rejectedRows,
-        duplicateRows: summary.duplicateRows,
-        status: 'COMPLETED',
-      },
-    });
-
-    if (rows.length > 0) {
-      await tx.monitoringCheck.createMany({
-        data: rows.map((row) => ({
-          serviceId: row.serviceId,
-          serviceName: row.serviceName,
-          timestamp: row.timestamp,
-          statusCode: row.statusCode,
-          latencyMs: row.latencyMs,
-          agent: row.agent,
-          region: row.region,
-          dataQualityStatus: row.dataQualityStatus,
-          datasetImportId: datasetImport.id,
-        })),
+  return prisma.$transaction(
+    async (tx) => {
+      const datasetImport = await tx.datasetImport.create({
+        data: {
+          filename: summary.filename,
+          totalRows: summary.totalRows,
+          acceptedRows: summary.acceptedRows,
+          rejectedRows: summary.rejectedRows,
+          duplicateRows: summary.duplicateRows,
+          status: 'COMPLETED',
+        },
       });
-    }
 
-    return datasetImport;
-  });
+      if (rows.length > 0) {
+        await tx.monitoringCheck.createMany({
+          data: rows.map((row) => ({
+            serviceId: row.serviceId,
+            serviceName: row.serviceName,
+            timestamp: row.timestamp,
+            statusCode: row.statusCode,
+            latencyMs: row.latencyMs,
+            agent: row.agent,
+            region: row.region,
+            dataQualityStatus: row.dataQualityStatus,
+            datasetImportId: datasetImport.id,
+          })),
+        });
+      }
+
+      return datasetImport;
+    },
+    // Default 5s interactive-transaction timeout is too short for
+    // createMany on the larger supplied files (up to ~15.5k rows) over a
+    // pooled Neon connection -- discovered by actually running the
+    // pipeline against all 5 real files, not just small test fixtures.
+    { timeout: 30_000 },
+  );
 }
