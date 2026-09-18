@@ -3,8 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled (pgbouncer) connection: used at runtime by the Lambda, which may
+  // have many concurrent short-lived connections.
+  url       = env("DATABASE_URL")
+  // Direct connection: required for migrations (advisory locks/prepared
+  // statements aren't reliable through a transaction-mode pooler).
+  directUrl = env("DIRECT_URL")
 }
 
 /// A single upload/processing run of one CSV file.
