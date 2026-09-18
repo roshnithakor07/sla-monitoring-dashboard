@@ -20,8 +20,10 @@ provider:
         - X-Filename
   logRetentionInDays: 14
   environment:
+    # DIRECT_URL is deliberately not set here: it's only read by `prisma
+    # migrate` (via schema.prisma's directUrl), never by the generated
+    # client at runtime, so the deployed Lambdas don't need it.
     DATABASE_URL: ${env:DATABASE_URL}
-    DIRECT_URL: ${env:DIRECT_URL}
     MAX_UPLOAD_BYTES: ${env:MAX_UPLOAD_BYTES, '5242880'}
     NODE_ENV: production
 
