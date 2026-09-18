@@ -92,7 +92,7 @@ export function UploadPanel({ onUploadSuccess }: UploadPanelProps) {
           type="button"
           onClick={handleUpload}
           disabled={!file || status === 'uploading'}
-          className="ml-auto rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="ml-auto cursor-pointer rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {status === 'uploading' ? 'Uploading…' : 'Upload'}
         </button>

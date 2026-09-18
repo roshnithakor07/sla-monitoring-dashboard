@@ -39,7 +39,7 @@ export function StatsSection({ refreshKey }: StatsSectionProps) {
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between text-left"
+        className="flex w-full cursor-pointer items-center justify-between text-left"
       >
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Statistics</h2>
         <span className="text-sm text-slate-400">{expanded ? 'Collapse ▲' : 'Expand ▼'}</span>
