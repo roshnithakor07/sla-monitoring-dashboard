@@ -35,8 +35,27 @@ describe('normalizeTimestamp', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('rejects epoch values that resolve outside a plausible year range', () => {
+  it('accepts a 13-digit epoch-millis value regardless of the resulting year', () => {
+    // No year-plausibility window is enforced -- see timestamp.ts's comment
+    // for why. This value resolves to 2286, and that's fine: it's a
+    // syntactically valid epoch-millis string, not an unrecoverable one.
     const result = normalizeTimestamp('9999999999999');
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.getUTCFullYear()).toBe(2286);
+  });
+
+  it('accepts a syntactically valid ISO timestamp from 1999 (no arbitrary year floor)', () => {
+    // Regression test: the spec's "don't assume the date range" instruction
+    // and its "invalid = unparseable" definition mean a real, parseable
+    // date outside some assumed window must not be rejected.
+    const result = normalizeTimestamp('1999-12-31T23:59:00Z');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.toISOString()).toBe('1999-12-31T23:59:00.000Z');
+  });
+
+  it('accepts a syntactically valid far-future ISO timestamp (no arbitrary year ceiling)', () => {
+    const result = normalizeTimestamp('2999-01-01T00:00:00Z');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.toISOString()).toBe('2999-01-01T00:00:00.000Z');
   });
 });
