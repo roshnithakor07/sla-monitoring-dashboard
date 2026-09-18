@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { UploadPanel } from './components/UploadPanel';
 import { StatsSection } from './components/StatsSection';
+import { LogsSection } from './components/LogsSection';
 
 function App() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -20,6 +21,7 @@ function App() {
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         <UploadPanel onUploadSuccess={handleUploadSuccess} />
         <StatsSection refreshKey={refreshKey} />
+        <LogsSection refreshKey={refreshKey} />
       </main>
     </div>
   );

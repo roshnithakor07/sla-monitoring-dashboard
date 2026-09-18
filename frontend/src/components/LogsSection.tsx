@@ -1,0 +1,217 @@
+import { useEffect, useState } from 'react';
+import { ApiError, fetchLogs } from '../services/api';
+import type { LogsResponse } from '../types';
+import { SERVICE_IDS } from '../types';
+import { StatusBadge } from './StatusBadge';
+import { formatMs, formatTimestamp } from '../utils/format';
+
+interface LogsSectionProps {
+  refreshKey: number;
+}
+
+const LIMIT = 25;
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: '200', label: '200' },
+  { value: '500', label: '500' },
+  { value: '502', label: '502' },
+  { value: '503', label: '503' },
+  { value: 'invalid', label: 'Invalid' },
+];
+
+interface FilterState {
+  startDate: string;
+  endDate: string;
+  serviceId: string;
+  status: string;
+}
+
+const EMPTY_FILTERS: FilterState = { startDate: '', endDate: '', serviceId: '', status: '' };
+
+export function LogsSection({ refreshKey }: LogsSectionProps) {
+  const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<LogsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const filters = {
+      startDate: appliedFilters.startDate || undefined,
+      endDate: appliedFilters.endDate || undefined,
+      serviceId: appliedFilters.serviceId || undefined,
+      status: appliedFilters.status || undefined,
+    };
+
+    fetchLogs(filters, page, LIMIT)
+      .then((res) => {
+        if (!cancelled) setData(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load logs.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedFilters, page, refreshKey]);
+
+  function applyFilters() {
+    setPage(1);
+    setAppliedFilters(draftFilters);
+  }
+
+  function resetFilters() {
+    setDraftFilters(EMPTY_FILTERS);
+    setPage(1);
+    setAppliedFilters(EMPTY_FILTERS);
+  }
+
+  const totalPages = data?.pagination.totalPages ?? 1;
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Logs</h2>
+
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Date from</label>
+          <input
+            type="date"
+            value={draftFilters.startDate}
+            onChange={(e) => setDraftFilters((f) => ({ ...f, startDate: e.target.value }))}
+            className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Date to</label>
+          <input
+            type="date"
+            value={draftFilters.endDate}
+            onChange={(e) => setDraftFilters((f) => ({ ...f, endDate: e.target.value }))}
+            className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Service</label>
+          <select
+            value={draftFilters.serviceId}
+            onChange={(e) => setDraftFilters((f) => ({ ...f, serviceId: e.target.value }))}
+            className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">All</option>
+            {SERVICE_IDS.map((id) => (
+              <option key={id} value={id}>
+                {id}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Status</label>
+          <select
+            value={draftFilters.status}
+            onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
+            className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            Apply filters
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto">
+        {loading && <p className="text-sm text-slate-500">Loading logs…</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {!loading && !error && data && data.data.length === 0 && (
+          <p className="text-sm text-slate-500">No records match these filters.</p>
+        )}
+
+        {!loading && !error && data && data.data.length > 0 && (
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-4">Timestamp</th>
+                <th className="py-2 pr-4">Service</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4">Latency</th>
+                <th className="py-2 pr-4">Agent</th>
+                <th className="py-2 pr-4">Region</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.data.map((row) => (
+                <tr key={row.id} className="border-b border-slate-100">
+                  <td className="py-2 pr-4 font-mono text-xs text-slate-600">{formatTimestamp(row.timestamp)}</td>
+                  <td className="py-2 pr-4">{row.serviceName}</td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge statusCode={row.statusCode} dataQualityStatus={row.dataQualityStatus} />
+                  </td>
+                  <td className="py-2 pr-4">{formatMs(row.latencyMs)}</td>
+                  <td className="py-2 pr-4 text-slate-500">{row.agent}</td>
+                  <td className="py-2 pr-4 text-slate-500">{row.region}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {!loading && !error && data && data.pagination.totalCount > 0 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+          <span>
+            Page {data.pagination.page} of {totalPages} · {data.pagination.totalCount.toLocaleString()} records
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-md border border-slate-300 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-md border border-slate-300 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
