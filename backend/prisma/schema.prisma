@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A single upload/processing run of one CSV file.
+/// Kept so the dashboard and README can show real, dynamically-computed
+/// import summaries instead of numbers made up on the frontend.
+model DatasetImport {
+  id            String       @id @default(uuid())
+  filename      String
+  uploadedAt    DateTime     @default(now())
+  totalRows     Int
+  acceptedRows  Int
+  rejectedRows  Int
+  duplicateRows Int
+  status        ImportStatus @default(COMPLETED)
+
+  checks MonitoringCheck[]
+
+  @@index([uploadedAt])
+}
+
+enum ImportStatus {
+  COMPLETED
+  FAILED
+}
+
+/// One normalized, cleaned health-check record.
+/// Only rows that could be parsed and mapped to a known service are stored
+/// here; rows that could not be parsed at all (bad structure, unparseable
+/// timestamp, unknown service) are rejected before persistence and are only
+/// reflected in DatasetImport.rejectedRows.
+///
+/// Rows that WERE parseable but have a data-quality problem (non-standard
+/// status code, missing/negative latency) are still stored, tagged with
+/// dataQualityStatus, so the dashboard never silently hides messy data.
+model MonitoringCheck {
+  id         String   @id @default(uuid())
+  serviceId  String
+  serviceName String
+  timestamp  DateTime
+  statusCode Int
+  /// Normalized to milliseconds. Null when latency was missing or invalid
+  /// (e.g. negative) in the source row — see dataQualityStatus.
+  latencyMs  Float?
+  agent      String
+  region     String
+
+  dataQualityStatus DataQualityStatus @default(CLEAN)
+
+  datasetImportId String
+  datasetImport   DatasetImport @relation(fields: [datasetImportId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([serviceId])
+  @@index([statusCode])
+  @@index([serviceId, timestamp])
+}
+
+enum DataQualityStatus {
+  /// Status code is a standard HTTP code and latency is a valid non-negative number.
+  CLEAN
+  /// status_code did not parse as a standard HTTP status (e.g. 999). Excluded
+  /// from the availability numerator AND denominator — we cannot tell whether
+  /// the underlying check succeeded or failed.
+  INVALID_STATUS
+  /// latency was blank/unparseable in the source row. Still counts toward
+  /// availability (status_code is trustworthy); excluded from latency aggregates.
+  LATENCY_MISSING
+  /// latency parsed but was negative (physically impossible). Same handling as
+  /// LATENCY_MISSING: counts toward availability, excluded from latency aggregates.
+  LATENCY_INVALID
+}
