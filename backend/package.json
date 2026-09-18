@@ -1,0 +1,29 @@
+{
+  "name": "sla-monitoring-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serverless upload/stats/logs API for the SLA monitoring dashboard",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed:upload": "ts-node src/scripts/localUpload.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "csv-parse": "^5.5.6",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.14.15",
+    "prisma": "^5.20.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}
