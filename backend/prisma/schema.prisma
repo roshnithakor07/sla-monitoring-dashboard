@@ -49,7 +49,10 @@ model MonitoringCheck {
   serviceId  String
   serviceName String
   timestamp  DateTime
-  statusCode Int
+  /// Null only when the raw status_code was entirely non-numeric (never
+  /// observed in the supplied data, but the pipeline handles it). Always
+  /// paired with dataQualityStatus = INVALID_STATUS.
+  statusCode Int?
   /// Normalized to milliseconds. Null when latency was missing or invalid
   /// (e.g. negative) in the source row — see dataQualityStatus.
   latencyMs  Float?
