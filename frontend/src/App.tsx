@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { UploadPanel } from './components/UploadPanel';
+import { StatsSection } from './components/StatsSection';
 
 function App() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
   function handleUploadSuccess() {
-    // Stats/logs sections will refetch on upload once they exist.
+    setRefreshKey((k) => k + 1);
   }
 
   return (
@@ -15,6 +19,7 @@ function App() {
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         <UploadPanel onUploadSuccess={handleUploadSuccess} />
+        <StatsSection refreshKey={refreshKey} />
       </main>
     </div>
   );
