@@ -1,0 +1,52 @@
+service: sla-monitoring-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  architecture: x86_64
+  httpApi:
+    cors: true
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    DIRECT_URL: ${env:DIRECT_URL}
+    MAX_UPLOAD_BYTES: ${env:MAX_UPLOAD_BYTES, '5242880'}
+    NODE_ENV: production
+
+functions:
+  upload:
+    handler: dist/handlers/upload.handler
+    timeout: 29
+    events:
+      - httpApi:
+          path: /api/upload
+          method: post
+  stats:
+    handler: dist/handlers/stats.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /api/stats
+          method: get
+  logs:
+    handler: dist/handlers/logs.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /api/logs
+          method: get
+
+package:
+  patterns:
+    - '!.env'
+    - '!src/**'
+    - '!tests/**'
+    - '!prisma/migrations/**'
+    - '!*.md'
+    - '!node_modules/prisma/**'
+    - '!node_modules/typescript/**'
+    - '!node_modules/vitest/**'
+    - '!node_modules/ts-node/**'
+    - '!node_modules/@types/**'
